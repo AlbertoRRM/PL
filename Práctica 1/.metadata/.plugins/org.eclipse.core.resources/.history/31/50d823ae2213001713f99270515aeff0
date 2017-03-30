@@ -1,0 +1,266 @@
+package procesamientos.comprobacionTipos;
+
+import errores.Errores;
+import java.util.HashMap;
+import java.util.Map;
+import procesamientos.Procesamiento;
+import programa.Programa.*;
+
+public class Vinculacion extends Procesamiento {
+	private final static String ERROR_ID_TIPO_DUPLICADO="Identificador de tipo ya declarado";
+	private final static String ERROR_ID_VAR_DUPLICADO="Variable ya declarada";
+	private final static String ERROR_ID_CAMPO_DUPLICADO="Campo duplicado en tipo registro";
+	private final static String ERROR_ID_TIPO_NO_DECLARADO="Identificador de tipo no declarado";
+	private final static String ERROR_ID_VAR_NO_DECLARADO="Variable no declarada";
+   private Map<String, DecVar> variables;
+   private Map<String, DecTipo> tipos;
+
+   private boolean error;
+   private Errores errores;
+   public Vinculacion(Errores errores) {
+      variables = new HashMap<>();
+      tipos = new HashMap<>();
+      this.errores = errores;
+      error = false;
+   }
+   private class ComplecionRefs extends Procesamiento {
+     public void procesa(DecTipo d) {
+        d.tipoDec().procesaCon(this);
+     }
+    public void procesa(DecVar d) {
+       d.tipoDec().procesaCon(this);
+    }     
+   public void procesa(TPointer p) {
+      p.tbase().procesaCon(this);
+   }
+   public void procesa(TRef r) {
+       DecTipo d = tipos.get(r.idtipo());
+       if (d == null) {
+             error = true;
+             errores.msg(r.enlaceFuente()+":"+ERROR_ID_TIPO_NO_DECLARADO+"("+r.idtipo()+")");             
+        }
+       else {
+         r.ponDeclaracion(d);
+       }
+   }
+  }   
+   public void procesa(Prog p) {
+     for (Dec d: p.decs())
+         d.procesaCon(this);
+     ComplecionRefs crefs = new ComplecionRefs();
+     for (Dec d: p.decs()) 
+         d.procesaCon(crefs);
+     p.inst().procesaCon(this);
+   }     
+   
+   public void procesa(DecTipo d) {
+       if(tipos.containsKey(d.idtipo())) {
+         error = true;
+         errores.msg(d.enlaceFuente()+":"+ERROR_ID_TIPO_DUPLICADO+"("+d.idtipo()+")");
+       }
+       else {
+          tipos.put(d.idtipo(),d); 
+          d.tipoDec().procesaCon(this);          
+       }
+   }
+   public void procesa(DecVar d) {
+     if(variables.containsKey(d.var())) {
+       error = true;
+       errores.msg(d.enlaceFuente()+":"+ERROR_ID_VAR_DUPLICADO+"("+d.var()+")");
+     }
+     else {
+       variables.put(d.var(), d);
+       d.tipoDec().procesaCon(this);
+     }
+   }     
+   public void procesa(TPointer p) {
+       if (! I.esRef(p.tbase())) {
+           p.tbase().procesaCon(this);
+       }    
+   }
+   public void procesa(TRef r) {
+       DecTipo d = tipos.get(r.idtipo());
+       if (d == null) {
+             error = true;
+             errores.msg(r.enlaceFuente()+":"+ERROR_ID_TIPO_NO_DECLARADO+"("+r.idtipo()+")");             
+        }
+       else {
+         r.ponDeclaracion(d);
+       }
+   }
+
+	public void procesa(Prog p) {
+		for (Dec d : p.decs())
+			d.procesaCon(this);
+		p.inst().procesaCon(this);
+	}
+
+	public void procesa(DecVar d) {
+		if (tablaDeSimbolos.containsKey(d.var())) {
+			error = true;
+			errores.msg(d.enlaceFuente() + ":" + ERROR_ID_DUPLICADO + "(" + d.var() + ")");
+		} else {
+			tablaDeSimbolos.put(d.var(), d);
+		}
+	}
+
+	public void procesa(IAsig i) {
+		DecVar decVar = tablaDeSimbolos.get(i.var());
+		if (decVar == null) {
+			error = true;
+			errores.msg(i.enlaceFuente() + ":" + ERROR_ID_NO_DECLARADO + "(" + i.var() + ")");
+		} else {
+			i.ponDeclaracion(decVar);
+		}
+		i.exp().procesaCon(this);
+	}
+
+	public void procesa(IBloque b) {
+		for (Inst i : b.is())
+			i.procesaCon(this);
+	}
+	
+	 public void procesa(IWhile i) {
+	     i.exp().procesaCon(this);
+	     i.cuerpo().procesaCon(this);
+	 } 
+	 
+	 public void procesa(IIfThen i) {
+		 i.exp().procesaCon(this);
+		 i.cuerpo().procesaCon(this);
+	 }
+	 
+	 public void procesa(IIfThenElse i) {
+		 i.exp().procesaCon(this);
+		 i.cuerpoIf().procesaCon(this);
+		 i.cuerpoElse().procesaCon(this);
+	 }
+	 
+	 public void procesa(IDoWhile i) {
+		 i.exp().procesaCon(this);
+		 i.cuerpo().procesaCon(this);
+	 }
+	 
+	 public void procesa(ISwitch i) {
+		 a
+	 }
+
+	public boolean error() {
+		return error;
+	}
+
+	public void procesa(And exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(Or exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(Not exp) {
+		exp.opnd().procesaCon(this);
+	}
+
+	public void procesa(Suma exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(Resta exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(Multiplicacion exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(Division exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(Concatena exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(ElementoCadena exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(RestoEntero exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(CambioSigno exp) {
+		exp.opnd().procesaCon(this);
+	}
+	
+	public void procesa(Mayor exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(Menor exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(MayorIgual exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(MenorIgual exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(Distinto exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(Igual exp) {
+		exp.opnd1().procesaCon(this);
+		exp.opnd2().procesaCon(this);
+	}
+	
+	public void procesa(ToInt exp) {
+		exp.opnd().procesaCon(this);
+	}
+	
+	public void procesa(ToReal exp) {
+		exp.opnd().procesaCon(this);
+	}
+	
+	public void procesa(ToBool exp) {
+		exp.opnd().procesaCon(this);
+	}
+	
+	public void procesa(ToChar exp) {
+		exp.opnd().procesaCon(this);
+	}
+	
+	public void procesa(ToString exp) {
+		exp.opnd().procesaCon(this);
+	}
+
+	public void procesa(Var exp) {
+		DecVar decVar = tablaDeSimbolos.get(exp.var());
+		if (decVar == null) {
+			error = true;
+			errores.msg(exp.enlaceFuente() + ":" + ERROR_ID_NO_DECLARADO + "(" + exp.var() + ")");
+		} else {
+			exp.ponDeclaracion(decVar);
+		}
+
+	}
+
+}
